@@ -1,0 +1,594 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="theme-color" content="#3f7a2c">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<title>Control Tubos FAEX</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Barlow:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.js"></script>
+<style>
+  :root{
+    --green:#5aa83a;
+    --green-d:#3f7a2c;
+    --green-dd:#2c5a1e;
+    --ink:#1d241a;
+    --paper:#f4f6f1;
+    --card:#ffffff;
+    --line:#dfe5d8;
+    --muted:#7c8773;
+    --amber:#e8a13a;
+    --red:#d8443c;
+    --shadow:0 4px 18px rgba(44,90,30,.10);
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{margin:0;padding:0}
+  body{
+    font-family:'Barlow',system-ui,sans-serif;
+    background:var(--paper);
+    color:var(--ink);
+    padding-bottom:84px;
+    min-height:100vh;
+  }
+  .condensed{font-family:'Barlow Condensed',sans-serif;letter-spacing:.3px}
+
+  /* HEADER */
+  header{
+    background:linear-gradient(135deg,var(--green-d),var(--green-dd));
+    color:#fff;padding:14px 16px;display:flex;align-items:center;gap:12px;
+    position:sticky;top:0;z-index:30;box-shadow:0 3px 14px rgba(0,0,0,.18);
+  }
+  header img{height:34px;background:#fff;border-radius:8px;padding:4px 8px}
+  header .htxt{font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:20px;line-height:1;text-transform:uppercase;letter-spacing:.5px}
+  header .htxt small{display:block;font-size:11px;font-weight:500;opacity:.85;letter-spacing:1.5px}
+
+  main{max-width:560px;margin:0 auto;padding:16px}
+  .view{display:none;animation:fade .25s ease}
+  .view.active{display:block}
+  @keyframes fade{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+
+  /* CARDS */
+  .card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:16px;margin-bottom:14px;box-shadow:var(--shadow)}
+  .card h2{font-family:'Barlow Condensed',sans-serif;text-transform:uppercase;font-size:16px;letter-spacing:1px;color:var(--green-d);margin:0 0 12px;display:flex;align-items:center;gap:8px}
+
+  /* COUNTDOWN */
+  .count-card{border:none;color:#fff;text-align:center;padding:22px 16px;border-radius:18px;transition:background .4s}
+  .count-card.ok{background:linear-gradient(135deg,#5aa83a,#3f7a2c)}
+  .count-card.warn{background:linear-gradient(135deg,#e8a13a,#c87f1a)}
+  .count-card.bad{background:linear-gradient(135deg,#e0564d,#b22f27)}
+  .count-card .lbl{font-family:'Barlow Condensed',sans-serif;text-transform:uppercase;letter-spacing:2px;font-size:13px;opacity:.92}
+  .count-card .big{font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:64px;line-height:1;margin:4px 0}
+  .count-card .sub{font-size:13px;opacity:.92;font-weight:500}
+  .bar{height:9px;background:rgba(255,255,255,.28);border-radius:6px;margin:14px 4px 6px;overflow:hidden}
+  .bar > div{height:100%;background:#fff;border-radius:6px;transition:width .5s}
+  .count-stats{display:flex;justify-content:space-around;margin-top:12px;font-size:13px}
+  .count-stats b{display:block;font-family:'Barlow Condensed',sans-serif;font-size:22px;font-weight:700}
+
+  /* FORM */
+  label{display:block;font-weight:600;font-size:13px;margin:10px 0 5px;color:var(--green-dd)}
+  input,select,textarea{
+    width:100%;font-family:'Barlow',sans-serif;font-size:17px;padding:13px 14px;
+    border:1.5px solid var(--line);border-radius:12px;background:#fbfcfa;color:var(--ink);
+    -webkit-appearance:none;appearance:none;
+  }
+  input:focus,select:focus,textarea:focus{outline:none;border-color:var(--green);background:#fff;box-shadow:0 0 0 3px rgba(90,168,58,.15)}
+  select{background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%233f7a2c' stroke-width='3'><path d='M6 9l6 6 6-6'/></svg>");background-repeat:no-repeat;background-position:right 14px center;padding-right:40px}
+  textarea{resize:vertical;min-height:96px}
+  .row2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .hint{font-size:12px;color:var(--muted);margin-top:4px}
+
+  /* BUTTONS */
+  .btn{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;border:none;cursor:pointer;
+    font-family:'Barlow Condensed',sans-serif;text-transform:uppercase;letter-spacing:.8px;font-weight:700;font-size:18px;
+    padding:15px;border-radius:13px;margin-top:14px;transition:transform .08s,filter .15s}
+  .btn:active{transform:scale(.98)}
+  .btn-primary{background:var(--green-d);color:#fff}
+  .btn-primary:active{filter:brightness(1.08)}
+  .btn-amber{background:var(--amber);color:#fff}
+  .btn-ghost{background:#eef2ea;color:var(--green-dd);border:1.5px solid var(--line)}
+  .btn-red{background:var(--red);color:#fff}
+  .btn-sm{font-size:14px;padding:10px;margin-top:0;width:auto;padding-left:16px;padding-right:16px}
+
+  /* HISTORY */
+  .item{display:flex;justify-content:space-between;align-items:center;padding:11px 2px;border-bottom:1px solid var(--line);font-size:14px}
+  .item:last-child{border-bottom:none}
+  .item .d{color:var(--muted);font-size:12px}
+  .item b{font-family:'Barlow Condensed',sans-serif;font-size:18px}
+  .empty{color:var(--muted);text-align:center;padding:18px;font-size:14px}
+  .tag{display:inline-block;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;padding:2px 8px;border-radius:20px;background:#eef2ea;color:var(--green-d)}
+
+  /* incidencia list */
+  .inc{border:1px solid var(--line);border-radius:12px;padding:12px;margin-bottom:10px;background:#fbfcfa}
+  .inc .ihead{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px}
+  .inc .ihead .t{font-family:'Barlow Condensed',sans-serif;font-weight:700;text-transform:uppercase;color:var(--green-d)}
+  .inc .meta{font-size:12px;color:var(--muted);line-height:1.5}
+  .inc .desc{font-size:13px;margin-top:6px;white-space:pre-wrap}
+
+  /* NAV */
+  nav{position:fixed;bottom:0;left:0;right:0;background:#fff;border-top:1px solid var(--line);
+    display:flex;z-index:30;box-shadow:0 -3px 14px rgba(44,90,30,.07);padding-bottom:env(safe-area-inset-bottom)}
+  nav button{flex:1;border:none;background:none;padding:9px 4px 11px;cursor:pointer;color:var(--muted);
+    display:flex;flex-direction:column;align-items:center;gap:3px;font-family:'Barlow',sans-serif;font-weight:600;font-size:11px}
+  nav button svg{width:24px;height:24px;stroke:currentColor;fill:none;stroke-width:2}
+  nav button.active{color:var(--green-d)}
+  nav button.active svg{stroke:var(--green-d)}
+
+  /* toast */
+  .toast{position:fixed;left:50%;bottom:96px;transform:translateX(-50%) translateY(20px);
+    background:var(--green-dd);color:#fff;padding:12px 20px;border-radius:30px;font-weight:600;font-size:14px;
+    opacity:0;pointer-events:none;transition:.3s;z-index:50;box-shadow:0 6px 20px rgba(0,0,0,.25);max-width:90%;text-align:center}
+  .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+  .small-note{font-size:12px;color:var(--muted);line-height:1.55;margin-top:6px}
+  .divider{height:1px;background:var(--line);margin:14px 0}
+</style>
+</head>
+<body>
+
+<header>
+  <img id="logo" alt="Extruplesa">
+  <div class="htxt">Control Tubos FAEX<small>Corte · Roscado · Calidad</small></div>
+</header>
+
+<main>
+
+  <!-- ============ CONTEO ============ -->
+  <section class="view active" id="view-conteo">
+    <div class="count-card ok" id="countCard">
+      <div class="lbl">Tubos para cambiar terrajas</div>
+      <div class="big" id="countBig">60000</div>
+      <div class="sub" id="countSub">Umbral: 60.000 tubos</div>
+      <div class="bar"><div id="countBar" style="width:0%"></div></div>
+      <div class="count-stats">
+        <div><b id="statHechos">0</b>Hechos este ciclo</div>
+        <div><b id="statUmbral">60.000</b>Umbral</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Añadir producción de hoy</h2>
+      <label>Referencia</label>
+      <select id="cRef">
+        <option>TUBO FAEX 17.5x2</option>
+        <option>TUBO FAEX 21.5x2</option>
+      </select>
+      <div class="row2">
+        <div>
+          <label>Longitud (mm)</label>
+          <input id="cLong" type="number" inputmode="numeric" placeholder="ej. 2000">
+        </div>
+        <div>
+          <label>Nº de tubos</label>
+          <input id="cTubos" type="number" inputmode="numeric" placeholder="ej. 1500">
+        </div>
+      </div>
+      <label>Fecha</label>
+      <input id="cFecha" type="date">
+      <button class="btn btn-primary" onclick="addConteo()">＋ Añadir tubos</button>
+    </div>
+
+    <div class="card">
+      <h2>Cambio de terrajas</h2>
+      <p class="small-note" style="margin-top:0">Indica la fecha del cambio y pulsa. Se reinicia la cuenta atrás a cero a partir de esa fecha.</p>
+      <label>Fecha del cambio</label>
+      <input id="tFecha" type="date">
+      <button class="btn btn-amber" onclick="cambioTerrajas()">🔧 Registrar cambio de terrajas</button>
+    </div>
+
+    <div class="card">
+      <h2>Historial reciente</h2>
+      <div id="histConteo"><div class="empty">Aún no hay registros.</div></div>
+    </div>
+
+    <div class="card">
+      <h2>Cambios de terrajas</h2>
+      <div id="histTerrajas"><div class="empty">Sin cambios registrados.</div></div>
+    </div>
+  </section>
+
+  <!-- ============ INCIDENCIA ============ -->
+  <section class="view" id="view-incidencia">
+    <div class="card">
+      <h2>Nueva incidencia</h2>
+      <label>Tipo de incidencia</label>
+      <select id="iTipo">
+        <option>Longitud</option>
+        <option>Diámetro</option>
+        <option>Espesor</option>
+        <option>Rosca</option>
+        <option>Corte</option>
+      </select>
+
+      <label>Referencia</label>
+      <select id="iRef">
+        <option>TUBO FAEX 17.5x2</option>
+        <option>TUBO FAEX 21.5x2</option>
+      </select>
+
+      <div class="row2">
+        <div>
+          <label>Longitud (mm)</label>
+          <input id="iLong" type="number" inputmode="numeric" placeholder="ej. 2000">
+        </div>
+        <div>
+          <label>OF</label>
+          <input id="iOF" type="text" placeholder="OF00-000000" autocapitalize="characters">
+        </div>
+      </div>
+      <div class="hint">Formato OF: OFxx-xxxxxx</div>
+
+      <label>Fecha</label>
+      <input id="iFecha" type="date">
+
+      <label>Descripción</label>
+      <textarea id="iDesc" placeholder="Cuenta qué ha sucedido…"></textarea>
+
+      <button class="btn btn-primary" onclick="guardarIncidencia()">💾 Guardar incidencia</button>
+      <div id="notifyBox" style="display:none"></div>
+      <p class="small-note">Al guardar, aparecerán botones para <b>avisar por WhatsApp</b> a las personas configuradas. La incidencia queda guardada para el Excel. (Configura los números en la pestaña <b>Datos</b>.)</p>
+    </div>
+
+    <div class="card">
+      <h2>Incidencias registradas</h2>
+      <div id="listInc"><div class="empty">Aún no has creado incidencias.</div></div>
+    </div>
+  </section>
+
+  <!-- ============ DATOS ============ -->
+  <section class="view" id="view-datos">
+    <div class="card">
+      <h2>Exportar a Excel</h2>
+      <p class="small-note" style="margin-top:0">Genera el archivo <b>Incidencias_TUBO_FAEX.xlsx</b> con dos pestañas: <b>Incidencias</b> y <b>Conteo y Terrajas</b> (con la celda llamativa de cuenta atrás). Guárdalo en <b>Z:\Calidad\TUBO FAEX</b>.</p>
+      <button class="btn btn-primary" onclick="exportExcel()">⬇️ Descargar Excel</button>
+      <button class="btn btn-primary" style="background:#25D366" onclick="compartirExcel()">📲 Compartir Excel por WhatsApp</button>
+    </div>
+
+    <div class="card">
+      <h2>Avisos por WhatsApp</h2>
+      <p class="small-note" style="margin-top:0">Números en formato internacional, sin "+" ni espacios. Ej: España 34 + número → <b>34612345678</b>.</p>
+      <div class="row2">
+        <div>
+          <label>Nombre 1</label>
+          <input id="cfgWa1Name" type="text" placeholder="Navarro">
+        </div>
+        <div>
+          <label>WhatsApp 1</label>
+          <input id="cfgWa1" type="tel" inputmode="numeric" placeholder="34600000000">
+        </div>
+      </div>
+      <div class="row2">
+        <div>
+          <label>Nombre 2</label>
+          <input id="cfgWa2Name" type="text" placeholder="Moliner">
+        </div>
+        <div>
+          <label>WhatsApp 2</label>
+          <input id="cfgWa2" type="tel" inputmode="numeric" placeholder="34600000000">
+        </div>
+      </div>
+      <button class="btn btn-ghost" onclick="guardarWhatsapp()">Guardar números</button>
+    </div>
+
+    <div class="card">
+      <h2>Configuración</h2>
+      <label>Umbral de tubos por terraja</label>
+      <input id="cfgUmbral" type="number" inputmode="numeric" value="60000">
+      <button class="btn btn-ghost" onclick="guardarUmbral()">Guardar umbral</button>
+    </div>
+
+    <div class="card">
+      <h2>Datos</h2>
+      <p class="small-note" style="margin-top:0">Todo se guarda en este móvil. Antes de borrar, descarga el Excel.</p>
+      <button class="btn btn-red" onclick="borrarTodo()">🗑️ Borrar todos los datos</button>
+    </div>
+
+    <div class="card">
+      <h2>Cómo poner el acceso directo</h2>
+      <p class="small-note" style="margin-top:0">En Chrome (Android): menú ⋮ → <b>Añadir a pantalla de inicio</b>. Aparecerá como una app.</p>
+    </div>
+  </section>
+
+</main>
+
+<nav>
+  <button class="active" data-v="conteo" onclick="show('conteo',this)">
+    <svg viewBox="0 0 24 24"><path d="M9 11l3 3 8-8"/><path d="M21 12v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h11"/></svg>
+    Conteo
+  </button>
+  <button data-v="incidencia" onclick="show('incidencia',this)">
+    <svg viewBox="0 0 24 24"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+    Incidencia
+  </button>
+  <button data-v="datos" onclick="show('datos',this)">
+    <svg viewBox="0 0 24 24"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></svg>
+    Datos
+  </button>
+</nav>
+
+<div class="toast" id="toast"></div>
+
+<script>
+document.getElementById('logo').src = "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/4gHYSUNDX1BST0ZJTEUAAQEAAAHIAAAAAAQwAABtbnRyUkdCIFhZWiAH4AABAAEAAAAAAABhY3NwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQAA9tYAAQAAAADTLQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAlkZXNjAAAA8AAAACRyWFlaAAABFAAAABRnWFlaAAABKAAAABRiWFlaAAABPAAAABR3dHB0AAABUAAAABRyVFJDAAABZAAAAChnVFJDAAABZAAAAChiVFJDAAABZAAAAChjcHJ0AAABjAAAADxtbHVjAAAAAAAAAAEAAAAMZW5VUwAAAAgAAAAcAHMAUgBHAEJYWVogAAAAAAAAb6IAADj1AAADkFhZWiAAAAAAAABimQAAt4UAABjaWFlaIAAAAAAAACSgAAAPhAAAts9YWVogAAAAAAAA9tYAAQAAAADTLXBhcmEAAAAAAAQAAAACZmYAAPKnAAANWQAAE9AAAApbAAAAAAAAAABtbHVjAAAAAAAAAAEAAAAMZW5VUwAAACAAAAAcAEcAbwBvAGcAbABlACAASQBuAGMALgAgADIAMAAxADb/2wBDAAUDBAQEAwUEBAQFBQUGBwwIBwcHBw8LCwkMEQ8SEhEPERETFhwXExQaFRERGCEYGh0dHx8fExciJCIeJBweHx7/2wBDAQUFBQcGBw4ICA4eFBEUHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh7/wAARCABWATADASIAAhEBAxEB/8QAHAABAAMBAAMBAAAAAAAAAAAAAAUGBwQBAwgC/8QAURAAAQMDAgMEBAcKCwUJAAAAAQIDBAAFEQYSByExEyJBUQgUYXEVMnWBgpGyFyM3OEJSkqGxwRYkMzVVcnazwsTRJmJzlNJDVld0g5Wi4fD/xAAbAQEAAgMBAQAAAAAAAAAAAAAAAQQCAwUGB//EAC0RAAICAQIEBQMEAwAAAAAAAAABAgMRBCEFEhMxIkFRYfAGcdEUgaGxM5HB/9oADAMBAAIRAxEAPwD7LpSlAKV+XFoabU44tKEJBKlKOAAPEms31ZxPZjrXFsDKZCxyMl0HYP6o6n3n9dVtTq6tNHmseDXbdCpZkzSqV85XTU9/uayqZdpSwfyEr2I/RTgVElayrcVK3eeedcSf1FBPw15X3x/xlGXEV5RPqOlfN1s1DfLasKhXWW0B+T2hUn9E8j9VX/SvFIlaI2oWEgHl60ynp/WT+8fVVrT8d09r5Zrlf8f7Nteurk8PY1KleuM+zKjokR3UOsuDchaDkKHmDXsrsp53RdFKUqQKUpQClKUApSlAKUpQClKUApSlAKUpQClKUApSlAKUpQClKUApSlAKUpQClKqnFO9Ks+lXQyvbIlnsGyDzAI7x+rPzkVqvujTXKyXZGM5qEXJ+RQeKOsXLtMctNudKbeyrC1JP8uof4R4efXyqh0qlTNQyHJDrDxLaUrKfvfIcj9deFk7dda5yfz2POX2zm3JrLLZKnxY2Q46Cofkp5muFN9aLhCmFhHgQcn6qrzTzToy2sK9njXsqxHRVpb7nMnqbM+hbY02NI/knkk/mnkfqr31TmWnHV7WkKWryAqetka4t4L0jaj8w94//AFVa/TRr3UixVfKeziaHw41e9p+emLKcUu2PKw4k8+yJ/LH7x41uiFJWhK0KCkqGQQcgivluts4NXpVx06q3vr3PQFBAJPMtn4v1YI9wFdjgWulzfp5v7fg7mhveem/2LzWK8XmbteuNeltKxNSXezRJ0B5bioMlTZ3JDq84BAJ7gHPwraqxniJOhW30lNFTbjMjw4rdukb3pDobQnLb4GVKIAySB7zXqUdRklC4RXCPMYkK4maweS04lZbXMVtWAc4PPoaj+OlyvWjNaaY1vFuE82UPCJcoaX19iQcndszjJSV88dUJrSoOrtJzpbcSDqeySpLp2tssz2lrWfIJCsmvRxI02zq7RNzsLgSFyWT2Cj+Q6nvIV+kBn2Zpkg7dQ3yDZdMTNQSHEriRYypG5J+OAMgA+3kB7xWZcMdP6j1Zwum3C9anvMGfqCV6228zJXujMheUobBPcSrmcDHdKR4VnVv1Hcdb6I0rwny81cvhAxboSO83Fj4UM+4frZ9tfUMKMxDhsw4raWmGG0ttIT0SlIwAPcBTsO5858WdH3/RcKzyIvEfVUo3C5Nw1ByasbEqBO4YV15Vodg4VXK13uFcneI+qZyIzyXVRn5Ki27tOdqhu5g+NR/pPfzPpT+0LH2V1r1MgwX4GvGtONusbSrWeorTFt4ZWy3CmLSkbkJyNucAePLzromy9X8JtYWVu66nmaj0vd5AjOLnEqejLJGDuJJ5Zz1wQFDAODUpw3/GF4hf8KN9lNcfpWOJl2vS1gYO6dNvCFMoHxiAko/a4mpBJ8abncoPEjhrFhXCXGjy7m4mS0y8pCHgFsABYBwod49fM1q9Y7x2/Clwr+VHf7yPWxVDJMq07c7k76TWpLW7cJa4DNmbW1FU8otIUfV+8EZwD3jzx4mq9eLXd9X+kBqPT41ff7RChwGZDSIMtSEg7GgRtzgZ3k++pbTP412qfkNv/LV+tKfjTaw+SGPsx6kgh9QPaw4PXq03KZqudqPS02SmNLRcCVuxyQTkKJJ6BRGCB3SCOhqw8ZLpcoXEnhrFhXGXGjTLi6mS0y8pCHkhTGAsA4UO8evmajvS3kIVoO2WhsdpNnXRsMND4ytqVZI+dSR9IV+uNDZa4l8J2idxRcHUk+eFR6A2Ssc4/qusvWuhLDAvtztDNzkSGn1wpCm1Hm1gnBGcZOM+ZrY6xvjrKjQuKXDOXMkMxo7UyQpx11YQhAyzzJPICoRLOr7jly/8UdZf84r/AFrxxkveopWstO8N9M3NdqfuzanpU5P8olpIVySRgg4Qs8iCeQyOdX6NrPR8mQ1GjarsTz7qwhttu4NKUtROAkAKySTyxVL47aVvMs2vW+lAVX+wKLiWQMmQz1UnHiRz5eIUodcUIOU8DoSWu1Y1zrBu4AZ9Z9eBG7zwEg//AC+etNsEOXb7JCgzrg5cZTDCG3ZS07VPKAwVEeGfn+eoLhhrq06808m4wFdlJbwiZEUe+wvyPmk88Hx94IFroyTDfSU1dd7NqDT8aySJDarcPhachpwp3tB1CEBQHVJO4EHlzrbYchmXEZlR1hbLzaXG1DxSRkH6jWJQLV/D/XPFCbje03BNjhE8wFgHdj3OICvpVcfR4vRvXCa0FxRL8FKoLoPVJbOEj9DZRkGg0pSoJFKUoBWR8d5SlXa2ws91thTuPapWP8Fa5WOcdW1DUsJ4juqhhI94Won9ork8bbWklj1X9lTXf4WZ7WadkmTfewUSEuydhI64KsVpdZjJS4q6uoZCi4XyEBPXO7livNcO7yOKiSu9gVCVliY29/udFj937K9mlwt259hN3FtLZVhfLpjxqN9bmRnC3IQrcOqXBhVSdpX8JSPV2Rtcxk7jyxV6Skq2pS/crWOzO8U0WV65wYqezYSF48GxgfXXmBdUyV7DHcSrzT3gPfXrjWaO0N8hfaEdfBIqRjGOUYjlsoHggjA+quTY6UvCm/ciCtb3ePY9lXvglKUzq1yPnuvxlAj2ggg/qP11RKunBptTmt2lAcm2HFH3Yx++s+HNrVV49UX9NtbH7m41ifFC022++kXoy1XeI3LhP26R2rK87VbUPKGceRAPzVtlZDrP8aHQ3ydJ/un6+go9Ay5Wfhvoaz3Ni5W3TcKNLjq3NOp3ZQcYyMn21PX+6RLJZJt3nr2RobCnnT44SM4HtPQDzrurH/SAmSdQXaw8L7U6UyLw+l+epP8A2cZBzk/OlSv/AEx507gzDRk67aX1zYuKF7aaat2q5clD4CMBhC1/GJ8BnCgepSk+dfV9UXitoiNqDhZJ03b46ULhsJXbUAfEW0nuJHvTlH0q5PR61adVcOookuFVxtv8TlBXxjtHcUfenHPzCqPchEN6T38z6U/tCx9lda9WQ+k9/M+lP7QsfZXWvU8gfPDVs1lc+PWuEaO1FHsjyAwX1ux0uhxOxOAApJxzro4N2ly48XL0rX9wlXHV1kI9UQ8R2PZHo62nH+8CBgAbwcZ6WHhv+MLxC/4Ub7Ka4+L/APsvxr0RrBjuNznDbppHIFJITlXn3XCfoDyqSDo47fhS4V/Kjv8AeR62Ksa9JFz4LvugNTvpPqVsvH8YWBnalSm1fsbV9VbFHeakMNvsOodacSFoWhQUlSTzBBHUVDMjItM/jXap+Q2/8tVcu1u1ZcvSS1QzpC/MWWYm3MKdedYS6Ft9myNuCk+JBz7KsWmCD6V2qsf0G3/lq/elPxptYfJDH2Y9SQdul+Fc0arj6r1zqd/Utzic4jZaDbDChzCgnxIPMYCRnnzrg45fhU4WfKb3249bBWP8cvwqcLPlN77ceoQNgrGOPsCHdeJnDa3XCOiREkS5DbrSui0ks5BrZ6yHjR+F3hf/AOef/azREst1v4YaBgT486HpiCzJjupdZcG7KFpOUkc/AgVcKV6TLiCaIJksiUW+1DG8doUZxu29cZ5ZqAYvxf01O0Le/up6KAYW2sfDEEcmpDaiAV4HmcbvbhQwQTWlr1bAXw5XrSOcxPg5U1CVdeSCrYfbnu++o3jjdbfauFd/VPdbT6zCcisIUea3XElKQB4kE59wJrKdUPTrT6L2mdOJSoXC+ONMNt9FFC3FOj9WwfSqe5BZPR4v+lLHw4ZVddV2OPc7hKemS237g0hwLUraNwKsg7UpPz1+OAtyt8TiPrnS9unRZkFyV8JQVxnUuNlCj3wFJJBxubT9E1cIXCPh6xCYYd0xAfW22lCnFJOVkDBUefU9aoupbLaeHPHDRl0skFq32y7Jct8htrIQVk4BOenNxB+hU9wbpSlKxJFKUoBWeccLYqRZItzbTkxHClzA6IXjn9YH11odei4xGJ8F+FKRvZfQULHsNVtXp1qKZV+prur6kHE+YazNT3q16L+3f2UjfjOM4Vmth1TZJWn7w7b5QJCTlpzHJxHgof8A7rVen2uBOB9ZjIUo/lgYV9YrxFFn6acoWL2Z55pxeGVaZeW7mNj4QlPghSRy+evFsSm3yzKjjvFBSATkc665+kOqoMn6Dv8AqP8ASvxpi2TYd4KJkdQb7MkE95Gcjx6Zq71aOm+R7ehXlTLOYyOpLNyuJCllWw9Crkn5hUlBtDTCg4txa1jyO0CpKlc6epnJYjshDTxTy92K1TgVbFBM+8LTgKxHaOOv5Sv8NZzY7XLvF0Zt8Jve66rGfBI8VH2Cvomw2yPZrRGtsUfe2Ebcnqo9So+0nJrqcC0jsu6z7R/s6uhqcp877I7qo/EHhjYdbXiJdbnNusWTFZLLaob6W+6ST4pJzzNXiqFqqVDGv/U7o9qExBakONtWszSAsurBUoRefQAZV5cq9ijsEXB4H6aiTWJaL9qhamXEuJSuekpUUnOCNnTlVstui7TB1zcNZdrLkXSc0GSXlpKGUDHdbAAx8UeJ/WajNdXaVpWPbb7AW8/FcbFvMSU+obnFj7w4e0OQoLG1ZPe2rJOdteNb2p6Dw/7V273Zy4wmUAymrg8yXFqWneopQsA5ycAg7RyGKEF5qqaS0FZdL6mu99tL01ty7KK5MZTiSwFbirKUhIIwSrHM4CjXBrdEOzDTUFc69NW565uJklqdKceWn1V9QTvSoukb0pOAccvKo6LdJR0XcpUC6TnYaNQRWIDz7qvWAwX4yXELKu/8cvJwvvbSM9aElq1xo+16wj29i6uSkIgTETGuwWEkrSCADkHlz9lWGqvcpNzOtZcODIIX8BKcYbWr72Hu0ISojp5DPlUVoRTIukNtV3vUa6Jhq+EbZdXXVqfX3cut9oopASrPNrKSF45YGAJyy6Qtdp1feNURnJSp13CBIS4sFtIQABtAAI6eJNcer9L6f4i2e3Lky5RjRpQlR3oqwgqUnKeqknKT7OuAQcVEw5s+4aY05bnJ8pKrtd5MaS+l1Qd7Fv1lwpCxzTkMpRkEEAnBHKvM9ciwWbW1kgzJYYt1lE2Apb6luRt7T6diVqJVhKmNwySRuwOQGBBctR2S16hs0i0XiIiXCkJw42r6wQRzBB5gjmKzJHAm2xkmPbdZ6rgwiTiM1MASM+AwAP1VN2G73JU3TNpmTXlzIk1+HOJWf4ylMVa2nFee5JbX/Wz5VP8AEh15nSEhTEh+OtUiM2XGXVNrCVSG0qwpJBGQSMg+NARvDvhjpnQ8x+fahNkT5DZadlS3961IJCiMABPMpBzjPKpS36QtULXdy1ky5KNxuEdEd5KlgtBKQgDaMZB7g6k1zWxt6za5aszM2bIgTba7KQ3KkLfUy4y40k7VrJVhQeHIk/F5YyahuEsmBOtFolOP6nfujkJLj7kxVwMZaikbiC595PXlj5qA0OqdxI4d2TXq7au8SbjHXbi4WFQ3UoOV7M5yk/mDGMeNSWvX/V7G0syH47ap0VDq2XFIV2ankBQCkkKGQSOVQcmXKY07ql63TLiqAzECoT8hbhWl3YrfsWvvlI7mDk8yrB5VqlbyvBpsvUJYx83/AAQH3A9K/wBPaq/59H/RVg1xoDTevHYLM6fcmnbGVNIVDeCClS0oOFEpOThKTy8/bV4ecQyyt51QQ2hJUpR6ADmTVV0FIlh2SzOWsrmtoujSV9W0vFW5sf1SkfpVk54kkZyniSj6lU+4Ppj/ALw6s/8AcE/9FWDiLwy09raVFnTnp8K4RG+zZlw3tiwnJIScggjJJ6A8+tedMlabhARcLncol73L9cjSnHCzL7qshkE9ngHaoFHMBOCOZrsatrQ1w5H9buhZRCRJDZuUgp7QuqBON+MYA7vT2VirW0ma43OSTSKjaOBGl2LozPvV0vN/Uyctsznwpr5wBkj2ZwfEGrnqfRVo1FfrFd7g5KC7G8XojDa0paK8pIKhtJOChOMEdK5JdxnN23UPZSnEum8NQ2Fk5LId9XRlOemC4VD21LRre5ZXZMpmbLehCMVKYkyHHlBxPPclSySARyI6cgfOpVmWZK3Lwl83/BNVWuIGi7TrWBDi3R2Wx6nKTKYdirShxKwCOpSeXPy8BXDCTLhW+wXpdwmPSpzrKZqXJC1NOdsnolBO1G1RSRtA5DBzk1+LoVovU74Uudytb6pKPg2UFuephG1GEqCSGySrcCHOZzy8MY9XbODF37Zx8+fyXalKVtLApSlAKUpQEPqzTsDUdu9VmJ2uJyWXkjvNn2eY8x41iGqdJ3jTzx9bYLkbPcktjKD7/wA0+w19D14WlK0FC0hSVDBBGQRXM13C6tX4u0vX8la/Swu37M+W6Vv900Hpe4LLi7amO4eqo6i3+ocv1VEnhVpzdn1q5geXaox9iuBPgOpT2aZz3oLV2wYtUxpvTd3v8gN2+Motg4W8vk2j3n9w51sds4f6WgrC/g8yVjoZCysfV0/VVoZabZaS0y2httIwlKE4AHsAqzp/p+Wc3S29Eba+HvPjZA6L0rB0zCKGfv0pwDtpChgq9g8h7KsFKV6WqqFUFCCwkdKMVBYiKrl2tN7/AIUG92eXb0b4SYq25TK1/FWpWQUqH51WOlbDIr9w098MzY7t9UxKjNQlsmKhBDannElLrnM/mZSkdQFr5nNfiXp+dM0N/B6Xcg/J7NLXrakc1hKwUqUM/GKQM+3Jqx0oCLvFqVPutkmpeDYtstchSSnPaBTDrWB5fygPzVFT9KOyYmoY6JyWjc7gzPjr7Ld2DjaGAncMjcN7AUeYyFEe2rTSgKxH0/c5k25T71cGUSJdv9Qa+D0qb7FGVErClEneSoY6Y2jr1pbrHe3bvbJt9uEGQLW2tLHqzCkKeWtOwrWVKOO7nujPM5zyqz0oCqI0rJY07b4cae0i4W2c5NivqaJRuUpzKVJyDgodWg4Pjn2V5c0xOm2jUabjNjm43yIqKVstkNMNhtSEJAJyrBWtRJxkqPIVaqUBV5Wky5rWzajZmBoQmFNSWdmQ+QhaG1A+BT2i/eCPKpHWFqfvWn3rfGfbYeU404hbiSpILbqV8wCDg7cfPUvSgIGz2e4i/Lvl6nRpEoRvVY7UZgttstlQUv4ylFSlFKOfIYSOXUnm0VaNRWO2260S5lqkQIUdLAU0w4l1QSnAOSojyzyqz0oDgvtvVcozDKXQ2WpbEjJGchtxK8fPtxXjUlvXdrBPtiHUtKlMLaCyMhJUMZxUhSsXFPPuYuCec+ZBT7fe7nZ5tuny4CEyWuy3x2lghJOF9VHqnIHtNGNM26DeYtwtMSJbwhtxmQhhgI7ZCgCB3ccwpKSPn86naVHTj3Zj0ot5ZW4djupVa49xuLEmJbHA424Gldu8UoUlO9RUQDhWSR8YjwyRUqm3qGonLr2o2qiJj7Mc8halZz9Ku+lFBIRqjEgntPdtBvEZUrYZ8sSmnEo5srSlvYceOFNg17bfbrgu4uT7xJjuqMf1dtmOhSWwknKlHcSSTge4DxzUxSnIs5HSjnJWrfYLi0LbClz2Hbda1hUcJaIdd2pKWwsk47oOTgcyAeXMFdrFdZrFytouLBttxUoudq2pTzKFABaEHdjHXBx3c9DirLSo6ccYMehDGBSlK2G4UpSgFKUoBSlKAUpSgFKUoBSlKAUpSgFKUoBSlKAUpSgFKUoBSlKAUpSgFKUoBSlKAUpSgFKUoBSlKAUpSgFKUoD/2Q==";
+
+/* ---------- almacenamiento ---------- */
+const K = {conf:'faex_conf',estado:'faex_estado',conteo:'faex_conteo',terr:'faex_terr',inc:'faex_inc'};
+
+function load(k,def){ try{return JSON.parse(localStorage.getItem(k)) ?? def;}catch(e){return def;} }
+function save(k,v){ localStorage.setItem(k, JSON.stringify(v)); }
+
+let conf   = load(K.conf,   {umbral:60000, wa1:'', wa1n:'Navarro', wa2:'', wa2n:'Moliner'});
+let estado = load(K.estado, {desdeCambio:0});
+let conteo = load(K.conteo, []);   // {fecha, ref, long, tubos}
+let terr   = load(K.terr,   []);   // {fecha, tubos}
+let incid  = load(K.inc,    []);   // {fecha, tipo, ref, long, of, desc}
+
+/* ---------- utilidades ---------- */
+const fmt = n => (n||0).toLocaleString('es-ES');
+function hoyISO(){ const d=new Date(); return d.toISOString().slice(0,10); }
+function fechaBonita(iso){ if(!iso) return ''; const [a,m,d]=iso.split('-'); return `${d}/${m}/${a}`; }
+function toast(msg){ const t=document.getElementById('toast'); t.textContent=msg; t.classList.add('show'); clearTimeout(t._t); t._t=setTimeout(()=>t.classList.remove('show'),2600); }
+
+/* ---------- navegación ---------- */
+function show(v,btn){
+  document.querySelectorAll('.view').forEach(s=>s.classList.remove('active'));
+  document.getElementById('view-'+v).classList.add('active');
+  document.querySelectorAll('nav button').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  window.scrollTo(0,0);
+}
+
+/* ---------- cuenta atrás ---------- */
+function refrescarContador(){
+  const u = conf.umbral;
+  const hechos = estado.desdeCambio;
+  const faltan = Math.max(0, u - hechos);
+  const pct = Math.min(100, Math.round(hechos/u*100));
+
+  document.getElementById('countBig').textContent = fmt(faltan);
+  document.getElementById('statHechos').textContent = fmt(hechos);
+  document.getElementById('statUmbral').textContent = fmt(u);
+  document.getElementById('countBar').style.width = pct+'%';
+
+  const card = document.getElementById('countCard');
+  const sub  = document.getElementById('countSub');
+  card.classList.remove('ok','warn','bad');
+  if(faltan<=0){ card.classList.add('bad'); sub.textContent='⚠️ ¡CAMBIAR TERRAJAS YA!'; }
+  else if(faltan<=5000){ card.classList.add('warn'); sub.textContent='Atención: cambio de terrajas próximo'; }
+  else { card.classList.add('ok'); sub.textContent='Umbral: '+fmt(u)+' tubos'; }
+}
+
+/* ---------- conteo ---------- */
+function addConteo(){
+  const ref = document.getElementById('cRef').value;
+  const long = parseInt(document.getElementById('cLong').value)||0;
+  const tubos = parseInt(document.getElementById('cTubos').value)||0;
+  const fecha = document.getElementById('cFecha').value || hoyISO();
+  if(tubos<=0){ toast('Indica un nº de tubos válido'); return; }
+  conteo.push({fecha, ref, long, tubos});
+  estado.desdeCambio += tubos;
+  save(K.conteo,conteo); save(K.estado,estado);
+  document.getElementById('cTubos').value='';
+  refrescarContador(); pintarHistConteo();
+  const faltan = Math.max(0, conf.umbral - estado.desdeCambio);
+  toast(faltan<=0 ? '¡Toca cambiar terrajas!' : fmt(tubos)+' tubos añadidos');
+}
+
+function cambioTerrajas(){
+  const fecha = document.getElementById('tFecha').value || hoyISO();
+  if(!confirm('¿Registrar cambio de terrajas el '+fechaBonita(fecha)+'? Se reiniciará la cuenta atrás.')) return;
+  terr.push({fecha, tubos:estado.desdeCambio});
+  estado.desdeCambio = 0;
+  save(K.terr,terr); save(K.estado,estado);
+  refrescarContador(); pintarHistTerrajas();
+  toast('Cambio de terrajas registrado ✔');
+}
+
+function pintarHistConteo(){
+  const box=document.getElementById('histConteo');
+  if(!conteo.length){ box.innerHTML='<div class="empty">Aún no hay registros.</div>'; return; }
+  const ord=[...conteo].sort((a,b)=>b.fecha.localeCompare(a.fecha));
+  box.innerHTML = ord.slice(0,12).map(c=>`
+    <div class="item">
+      <div><span class="tag">${c.ref.replace('TUBO FAEX ','')}</span>
+      <div class="d">${fechaBonita(c.fecha)} · ${fmt(c.long)} mm</div></div>
+      <b>+${fmt(c.tubos)}</b>
+    </div>`).join('');
+}
+function pintarHistTerrajas(){
+  const box=document.getElementById('histTerrajas');
+  if(!terr.length){ box.innerHTML='<div class="empty">Sin cambios registrados.</div>'; return; }
+  const ord=[...terr].sort((a,b)=>b.fecha.localeCompare(a.fecha));
+  box.innerHTML = ord.slice(0,12).map(t=>`
+    <div class="item">
+      <div><div class="d">Cambio de terrajas</div>${fechaBonita(t.fecha)}</div>
+      <b>${fmt(t.tubos)} tubos</b>
+    </div>`).join('');
+}
+
+/* ---------- incidencias ---------- */
+function guardarIncidencia(){
+  const tipo=document.getElementById('iTipo').value;
+  const ref =document.getElementById('iRef').value;
+  const long=document.getElementById('iLong').value.trim();
+  const of  =document.getElementById('iOF').value.trim();
+  const fecha=document.getElementById('iFecha').value || hoyISO();
+  const desc=document.getElementById('iDesc').value.trim();
+
+  if(!of){ toast('Falta el código OF'); return; }
+  if(!desc){ toast('Añade una descripción'); return; }
+
+  const reg={fecha,tipo,ref,long,of,desc};
+  incid.unshift(reg); save(K.inc,incid); pintarInc();
+
+  const texto =
+`*INCIDENCIA TUBO FAEX*
+Tipo: ${tipo}
+Referencia: ${ref}
+Longitud: ${long} mm
+OF: ${of}
+Fecha: ${fechaBonita(fecha)}
+
+${desc}`;
+
+  // panel de aviso WhatsApp
+  const box=document.getElementById('notifyBox');
+  const destinos=[{n:conf.wa1n||'Persona 1',t:conf.wa1},{n:conf.wa2n||'Persona 2',t:conf.wa2}].filter(d=>d.t);
+  if(!destinos.length){
+    box.style.display='block';
+    box.innerHTML='<p class="small-note" style="color:var(--red)">Incidencia guardada. Configura los números de WhatsApp en la pestaña <b>Datos</b> para poder avisar.</p>';
+  } else {
+    box.style.display='block';
+    box.innerHTML='<div class="divider"></div><p class="small-note" style="margin-top:0"><b>Incidencia guardada.</b> Avisar por WhatsApp:</p>'+
+      destinos.map(d=>`<button class="btn btn-primary" style="background:#25D366" onclick="abrirWa('${d.t}','${encodeURIComponent(texto)}')">📲 Avisar a ${d.n}</button>`).join('');
+  }
+  document.getElementById('iLong').value='';
+  document.getElementById('iOF').value='';
+  document.getElementById('iDesc').value='';
+  toast('Incidencia guardada ✔');
+}
+function abrirWa(num,textoEnc){
+  window.open('https://wa.me/'+num+'?text='+textoEnc,'_blank');
+}
+
+function pintarInc(){
+  const box=document.getElementById('listInc');
+  if(!incid.length){ box.innerHTML='<div class="empty">Aún no has creado incidencias.</div>'; return; }
+  box.innerHTML = incid.map(i=>`
+    <div class="inc">
+      <div class="ihead"><span class="t">${i.tipo}</span><span class="d" style="font-size:12px;color:var(--muted)">${fechaBonita(i.fecha)}</span></div>
+      <div class="meta">${i.ref} · ${fmt(parseInt(i.long)||i.long)} mm · OF ${i.of}</div>
+      <div class="desc">${(i.desc||'').replace(/</g,'&lt;')}</div>
+    </div>`).join('');
+}
+
+/* ---------- excel ---------- */
+function buildWB(){
+  const wb = XLSX.utils.book_new();
+
+  /* hoja Incidencias */
+  const incAOA = [['Fecha','Tipo','Referencia','Longitud (mm)','OF','Descripción']];
+  [...incid].sort((a,b)=>a.fecha.localeCompare(b.fecha)).forEach(i=>incAOA.push([fechaBonita(i.fecha),i.tipo,i.ref,Number(i.long)||i.long,i.of,i.desc]));
+  const wsInc = XLSX.utils.aoa_to_sheet(incAOA);
+  wsInc['!cols']=[{wch:12},{wch:12},{wch:20},{wch:13},{wch:14},{wch:48}];
+  styleHeader(wsInc, incAOA[0].length);
+  XLSX.utils.book_append_sheet(wb, wsInc, 'Incidencias');
+
+  /* hoja Conteo y Terrajas */
+  const u=conf.umbral, hechos=estado.desdeCambio, faltan=Math.max(0,u-hechos);
+  const estadoTxt = faltan<=0 ? '¡CAMBIAR TERRAJAS YA!' : (faltan<=5000?'Cambio próximo':'OK');
+  const aoa=[];
+  aoa.push(['CONTROL CAMBIO DE TERRAJAS — TUBO FAEX']);          //0
+  aoa.push(['Umbral por terraja (tubos)', u]);                   //1
+  aoa.push(['Tubos hechos en el ciclo actual', hechos]);         //2
+  aoa.push(['TUBOS RESTANTES PARA CAMBIAR TERRAJAS', faltan]);   //3  celda llamativa
+  aoa.push(['Estado', estadoTxt]);                               //4
+  aoa.push([]);                                                  //5
+  aoa.push(['HISTORIAL DE CAMBIOS DE TERRAJAS']);                //6
+  aoa.push(['Fecha cambio','Tubos hechos en ese ciclo']);        //7
+  const baseTerr=8;
+  [...terr].sort((a,b)=>a.fecha.localeCompare(b.fecha)).forEach(t=>aoa.push([fechaBonita(t.fecha),t.tubos]));
+  aoa.push([]);
+  const detHdr=aoa.length;
+  aoa.push(['DETALLE DE CONTEO DIARIO']);
+  aoa.push(['Fecha','Referencia','Longitud (mm)','Tubos']);
+  [...conteo].sort((a,b)=>a.fecha.localeCompare(b.fecha)).forEach(c=>aoa.push([fechaBonita(c.fecha),c.ref,Number(c.long)||c.long,c.tubos]));
+
+  const ws=XLSX.utils.aoa_to_sheet(aoa);
+  ws['!cols']=[{wch:30},{wch:26},{wch:16},{wch:12}];
+  ws['!merges']=[
+    {s:{r:0,c:0},e:{r:0,c:3}},
+    {s:{r:6,c:0},e:{r:6,c:1}},
+    {s:{r:detHdr,c:0},e:{r:detHdr,c:3}}
+  ];
+
+  const ref=(r,c)=>XLSX.utils.encode_cell({r,c});
+  // título
+  setStyle(ws,ref(0,0),{font:{bold:true,sz:14,color:{rgb:'FFFFFF'}},fill:{fgColor:{rgb:'3F7A2C'}},alignment:{horizontal:'center'}});
+  // etiquetas
+  [1,2,4].forEach(r=>setStyle(ws,ref(r,0),{font:{bold:true,color:{rgb:'2C5A1E'}}}));
+  // celda llamativa cuenta atrás
+  const col = faltan<=0?'D8443C':(faltan<=5000?'E8A13A':'5AA83A');
+  setStyle(ws,ref(3,0),{font:{bold:true,sz:13,color:{rgb:'FFFFFF'}},fill:{fgColor:{rgb:col}},alignment:{horizontal:'left',vertical:'center'}});
+  setStyle(ws,ref(3,1),{font:{bold:true,sz:22,color:{rgb:'FFFFFF'}},fill:{fgColor:{rgb:col}},alignment:{horizontal:'center',vertical:'center'}});
+  // cabeceras de tabla
+  setStyle(ws,ref(6,0),{font:{bold:true,sz:12,color:{rgb:'FFFFFF'}},fill:{fgColor:{rgb:'3F7A2C'}}});
+  [ref(7,0),ref(7,1)].forEach(a=>setStyle(ws,a,{font:{bold:true},fill:{fgColor:{rgb:'EEF2EA'}}}));
+  setStyle(ws,ref(detHdr,0),{font:{bold:true,sz:12,color:{rgb:'FFFFFF'}},fill:{fgColor:{rgb:'3F7A2C'}}});
+  for(let c=0;c<4;c++) setStyle(ws,ref(detHdr+1,c),{font:{bold:true},fill:{fgColor:{rgb:'EEF2EA'}}});
+
+  XLSX.utils.book_append_sheet(wb, ws, 'Conteo y Terrajas');
+  return wb;
+}
+
+function exportExcel(){
+  if(typeof XLSX==='undefined'){ toast('Sin conexión para generar el Excel'); return; }
+  XLSX.writeFile(buildWB(), 'Incidencias_TUBO_FAEX.xlsx');
+  toast('Excel generado ✔ Guárdalo en Z:\\Calidad\\TUBO FAEX');
+}
+
+async function compartirExcel(){
+  if(typeof XLSX==='undefined'){ toast('Sin conexión para generar el Excel'); return; }
+  try{
+    const buf = XLSX.write(buildWB(), {bookType:'xlsx', type:'array'});
+    const file = new File([buf], 'Incidencias_TUBO_FAEX.xlsx',
+      {type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
+    if(navigator.canShare && navigator.canShare({files:[file]})){
+      await navigator.share({files:[file], title:'Incidencias TUBO FAEX',
+        text:'Registro de incidencias y conteo de tubos FAEX'});
+    } else {
+      exportExcel();
+      toast('Tu móvil no permite compartir el archivo. Lo he descargado: adjúntalo en WhatsApp.');
+    }
+  }catch(e){ /* el usuario canceló: no hacer nada */ }
+}
+function styleHeader(ws,n){
+  for(let c=0;c<n;c++){
+    const a=XLSX.utils.encode_cell({r:0,c});
+    setStyle(ws,a,{font:{bold:true,color:{rgb:'FFFFFF'}},fill:{fgColor:{rgb:'3F7A2C'}}});
+  }
+}
+function setStyle(ws,addr,style){ if(ws[addr]){ ws[addr].s=style; } }
+
+/* ---------- config / borrado ---------- */
+function guardarUmbral(){
+  const u=parseInt(document.getElementById('cfgUmbral').value)||60000;
+  conf.umbral=u; save(K.conf,conf); refrescarContador();
+  toast('Umbral guardado: '+fmt(u));
+}
+function guardarWhatsapp(){
+  const limpiar = s => (s||'').replace(/[^0-9]/g,'');
+  conf.wa1  = limpiar(document.getElementById('cfgWa1').value);
+  conf.wa2  = limpiar(document.getElementById('cfgWa2').value);
+  conf.wa1n = document.getElementById('cfgWa1Name').value.trim() || 'Persona 1';
+  conf.wa2n = document.getElementById('cfgWa2Name').value.trim() || 'Persona 2';
+  save(K.conf,conf);
+  toast('Números de WhatsApp guardados ✔');
+}
+function borrarTodo(){
+  if(!confirm('¿Seguro? Se borrará todo el conteo, terrajas e incidencias de este móvil.')) return;
+  if(!confirm('Confirma de nuevo. Esto NO se puede deshacer.')) return;
+  [K.conteo,K.terr,K.inc,K.estado,K.conf].forEach(k=>localStorage.removeItem(k));
+  conf={umbral:60000,wa1:'',wa1n:'Navarro',wa2:'',wa2n:'Moliner'}; estado={desdeCambio:0}; conteo=[]; terr=[]; incid=[];
+  initUI(); toast('Datos borrados');
+}
+
+/* ---------- init ---------- */
+function initUI(){
+  document.getElementById('cfgUmbral').value=conf.umbral;
+  document.getElementById('cfgWa1').value=conf.wa1||'';
+  document.getElementById('cfgWa2').value=conf.wa2||'';
+  document.getElementById('cfgWa1Name').value=conf.wa1n||'';
+  document.getElementById('cfgWa2Name').value=conf.wa2n||'';
+  document.getElementById('iFecha').value=hoyISO();
+  document.getElementById('cFecha').value=hoyISO();
+  document.getElementById('tFecha').value=hoyISO();
+  document.getElementById('notifyBox').style.display='none';
+  refrescarContador(); pintarHistConteo(); pintarHistTerrajas(); pintarInc();
+}
+initUI();
+</script>
+</body>
+</html>
